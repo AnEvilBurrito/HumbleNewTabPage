@@ -1,7 +1,7 @@
 {
-	"name": "Humble New Tab Page",
-	"short_name": "HNTP",
-	"version": "1.26.2",
+	"name": "Flame Humble New Tab Page",
+	"short_name": "FHNTP",
+	"version": "1.26.3",
 	"minimum_chrome_version": "104",
 	"manifest_version": 3,
 	"description": "A Flame-inspired new tab with independent YAML bookmarks, local MDI icons, and customizable columns.",
