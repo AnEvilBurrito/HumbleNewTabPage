@@ -8,7 +8,7 @@ A fork of Humble New Tab Page combining independent Flame-compatible YAML bookma
 ### Features
 
 - Import a `.yaml` / `.yml` file or paste/edit YAML in Options.
-- Quickly add bookmarks and create categories using **Options → Settings → + Add bookmark**, or right-click a category and choose **Add bookmark here**.
+- Quickly add bookmarks using the subtle **＋** icon beside Options, **Options → Settings → + Add bookmark**, or a category's **Add bookmark here** context menu.
 - Right-click a bookmark to **Edit** or **Delete** it.
 - Choose from 7,448 bundled MDI icons with searchable suggestions and a preview.
 - Export your complete custom list back to YAML, including quick-added bookmarks.
@@ -61,7 +61,7 @@ Apply or reload unsaved YAML edits before using quick-add/Edit/Delete. Other ope
 
 Bookmarks remain local to this browser profile. The extension does not watch the imported file, update that file, synchronize with Flame, or load the repository's personal `flame.yaml` automatically. Extension removal clears its local storage, so keep exports if you need a durable backup.
 
-The main page shows only bookmark categories and links, without an action toolbar. Add/import controls are available through Options (the top-right icon).
+The main page has no full-size action toolbar. Small, muted **Add bookmark** and **Import YAML** icons sit beside Options in the top-right corner, with tooltips and keyboard access; they brighten on hover/focus and do not affect the bookmark layout. Full-size controls remain in Options. **Hide shortcut icons** hides the corner controls until hover or keyboard focus.
 
 Fresh installs use the Flame theme and show category headings. Existing explicit appearance/link-opening preferences are preserved; old browser bookmark layouts are not reused. For a multi-column layout, right-click a category and choose **Create new column**, or drag categories to column edges.
 

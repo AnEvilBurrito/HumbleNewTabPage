@@ -37,13 +37,30 @@ async function main() {
     assert.equal(await page.locator('#page_actions').count(), 0);
     assert.equal(await page.locator('#add_bookmark').isVisible(), false);
     assert.equal(await page.locator('#import_bookmarks').isVisible(), false);
+    assert.equal(await page.locator('#quick_add_bookmark').isVisible(), true);
+    assert.equal(await page.locator('#quick_import_bookmarks').isVisible(), true);
+    assert.equal(await page.locator('#quick_add_bookmark').getAttribute('title'), 'Add bookmark');
+    assert.equal(await page.locator('#quick_import_bookmarks').getAttribute('aria-label'), 'Import YAML');
     const extensionUrl = await page.evaluate(() => location.href);
     assert.match(extensionUrl, /^chrome-extension:/);
     assert.equal(await page.evaluate(() => chrome.runtime.getManifest().permissions.includes('bookmarks')), false);
     assert.equal(await page.evaluate(() => document.body.dataset.theme), 'Flame');
     await page.locator('.empty-state').waitFor();
 
-    // Import is accessible in Options; no action row is shown above bookmarks.
+    // Native keyboard shortcuts open the same dialog/editor without an action row.
+    await page.locator('#quick_add_bookmark').focus();
+    await page.keyboard.press('Enter');
+    await page.locator('#bookmark_dialog').waitFor();
+    assert.equal(await page.evaluate(() => document.activeElement.id), 'bookmark_url');
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => document.activeElement.id === 'quick_add_bookmark');
+    await page.locator('#quick_import_bookmarks').focus();
+    await page.keyboard.press('Space');
+    await page.locator('#bookmark_yaml').waitFor();
+    assert.equal(await page.evaluate(() => document.activeElement.id), 'bookmark_yaml');
+    await page.locator('#options_close_button').click();
+
+    // Full-size actions remain accessible in Options.
     await openOptionsAction(page, 'import_bookmarks');
     await page.locator('#bookmark_file').setInputFiles({name: 'bookmarks.yaml', mimeType: 'application/yaml', buffer: Buffer.from(source)});
     await page.waitForFunction(() => !document.getElementById('bookmark_apply').disabled);
@@ -57,6 +74,25 @@ async function main() {
     assert.equal(await page.evaluate(() => document.fonts.check('16px "Material Design Icons"')), true);
     await page.screenshot({path: '.tmp/flame-desktop.png', fullPage: true});
 
+    // Icons float outside the layout and remain discoverable when hidden by preference.
+    const mainY = (await page.locator('#main').boundingBox()).y;
+    const shortcutStyle = await page.locator('#quick_add_bookmark').evaluate(element => {
+      const style = getComputedStyle(element);
+      return {background: style.backgroundColor, border: style.borderTopWidth};
+    });
+    assert.equal(shortcutStyle.background, 'rgba(0, 0, 0, 0)');
+    assert.equal(shortcutStyle.border, '0px');
+    await page.evaluate(() => setConfig('hide_options', 1));
+    await page.waitForFunction(() => getComputedStyle(document.getElementById('quick_add_bookmark')).opacity === '0');
+    assert.equal((await page.locator('#main').boundingBox()).y, mainY);
+    await page.locator('#quick_add_bookmark').hover();
+    await page.waitForFunction(() => getComputedStyle(document.getElementById('quick_add_bookmark')).opacity === '1');
+    await page.mouse.move(300, 5);
+    await page.locator('#quick_add_bookmark').focus();
+    await page.keyboard.press('Tab');
+    await page.waitForFunction(() => document.activeElement.id === 'quick_import_bookmarks' && getComputedStyle(document.activeElement).opacity === '1');
+    await page.evaluate(() => { setConfig('hide_options', 0); document.activeElement.blur(); });
+
     // Pinned category can stay closed after reload.
     await page.locator('#main .category').first().click();
     await page.waitForTimeout(250);
@@ -65,8 +101,8 @@ async function main() {
     await page.locator('#main .category').first().click();
     await page.waitForTimeout(250);
 
-    // Add from Options, with searchable local MDI icon preview.
-    await openOptionsAction(page, 'add_bookmark');
+    // Add from the subtle corner icon, with searchable local MDI icon preview.
+    await page.locator('#quick_add_bookmark').click();
     assert.equal(await page.locator('#options').isVisible(), false);
     await page.locator('#bookmark_url').fill('http://homeassistant.local:8123/');
     await page.locator('#bookmark_name').fill('Home');

@@ -220,8 +220,13 @@ document.getElementById('bookmark_clear').onclick = function() {
 		reloadBookmarkEditor();
 	} catch (error) { setBookmarkStatus(error.message, true); }
 };
-document.getElementById('add_bookmark').onclick = function() { showBookmarkForm(); };
-document.getElementById('import_bookmarks').onclick = openBookmarkOptions;
+document.querySelectorAll('#page_shortcuts [data-mdi-icon]').forEach(function(icon) {
+	icon.textContent = CustomBookmarks.glyph(icon.dataset.mdiIcon);
+});
+document.getElementById('quick_add_bookmark').onclick =
+	document.getElementById('add_bookmark').onclick = function() { showBookmarkForm(); };
+document.getElementById('quick_import_bookmarks').onclick =
+	document.getElementById('import_bookmarks').onclick = openBookmarkOptions;
 document.getElementById('bookmark_category').onchange = updateCategoryInput;
 document.getElementById('bookmark_icon').oninput = updateIconPreview;
 document.getElementById('bookmark_cancel').onclick = function() { document.getElementById('bookmark_dialog').close(); };

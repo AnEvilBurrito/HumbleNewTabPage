@@ -41,7 +41,7 @@ test('fresh page and options initialize without any browser bookmarks API', () =
   p.close();
 });
 
-test('bookmark actions live only in Options and closing the form restores visible focus', () => {
+test('full-size bookmark actions remain in Options and closing the form restores visible focus', () => {
   const p = page(sample);
   assert.equal(p.get('page_actions'), null);
   assert.equal(p.get('add_bookmark').closest('#options'), p.get('options'));
@@ -57,6 +57,43 @@ test('bookmark actions live only in Options and closing the form restores visibl
   addHere.action();
   assert.equal(p.get('bookmark_dialog').open, true);
   assert.equal(p.get('bookmark_category').value, M.categoryId('Work'));
+  p.close();
+});
+
+test('icon shortcuts are labeled native buttons and reuse existing add/import flows', () => {
+  const p = page(sample);
+  const add = p.get('quick_add_bookmark'), imports = p.get('quick_import_bookmarks');
+  assert.equal(p.get('page_actions'), null);
+  for (const [button, label] of [[add, 'Add bookmark'], [imports, 'Import YAML']]) {
+    assert.equal(button.tagName, 'BUTTON');
+    assert.equal(button.type, 'button');
+    assert.equal(button.getAttribute('aria-label'), label);
+    assert.equal(button.title, label);
+    assert.equal(button.closest('#page_shortcuts'), p.get('page_shortcuts'));
+    assert.equal(button.closest('#options'), null);
+    assert.ok(button.querySelector('[aria-hidden="true"]').textContent);
+  }
+  add.focus();
+  add.click();
+  assert.equal(p.get('bookmark_dialog').open, true);
+  assert.equal(p.get('options').style.display, 'none');
+  p.get('bookmark_cancel').click();
+  assert.equal(p.w.document.activeElement, add);
+  imports.click();
+  assert.equal(p.get('options').style.display, 'block');
+  assert.equal(p.w.document.querySelectorAll('#options .section')[2].classList.contains('current'), true);
+  assert.equal(p.w.document.activeElement, p.get('bookmark_yaml'));
+  p.close();
+});
+
+test('hide setting targets all shortcut icons without changing the bookmark margin', () => {
+  const p = page(sample);
+  const before = p.w.getStyle('v_margin', 1);
+  p.w.setConfig('hide_options', 1);
+  assert.equal(p.w.styles.hide_options.innerText, '#page_shortcuts .shortcut-button { opacity: 0; }');
+  assert.equal(p.w.getStyle('v_margin', 1), before);
+  p.w.setConfig('hide_options', 0);
+  assert.equal(p.w.styles.hide_options, undefined);
   p.close();
 });
 

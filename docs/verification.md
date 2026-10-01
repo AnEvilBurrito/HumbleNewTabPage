@@ -14,7 +14,7 @@ Verified on **2026-10-01 UTC** in the project workspace.
 | Check | Result |
 | --- | --- |
 | `npm run build` | Pass: local browser bundle and 7,448 MDI icon names/font generated |
-| `npm test` | Pass: 27 provider and DOM integration tests |
+| `npm test` | Pass: 29 provider and DOM integration tests |
 | `npm run test:browser` | Pass: real unpacked-extension smoke test |
 | `node --check` on application JavaScript | Pass |
 | `npm audit` | Zero reported vulnerabilities |
@@ -34,8 +34,10 @@ The unpacked extension passed:
 - New-tab override and removal of the bookmarks permission.
 - YAML file selection/preview, explicit Apply, and persistence across reload.
 - Pinned category close/reload/reopen behavior.
-- Clean bookmark-only main page, with Add bookmark / Import YAML moved into Options.
-- Quick add from Options with new category and icon selection; dialog cancellation restores focus to the visible Options icon.
+- Clean main page without a full-size toolbar; muted Add/Import icons beside Options have no background/border and do not affect the bookmark margin.
+- Native Enter/Space activation, accessible labels/tooltips, dialog Escape cancellation and focus restoration.
+- Hide shortcut icons preference hides the entire corner group, with hover/focus reveal.
+- Quick add from the corner icon and retained Options actions, including new category and icon selection.
 - Actual bookmark Edit/Delete context menus.
 - Category context-menu column creation and HTML drag-and-drop.
 - Cross-tab refresh, preserved dirty YAML text, and stale quick-form rejection.

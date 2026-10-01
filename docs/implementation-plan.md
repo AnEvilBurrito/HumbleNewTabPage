@@ -4,7 +4,7 @@ Status: implemented. See [verification.md](verification.md) for test results and
 
 Scope addition approved after this plan was written: new-tab **quick add**, category creation, and per-bookmark **Edit/Delete** context-menu actions. These mutations update the same YAML-backed list and appear in exports. A toolbar Save current page shortcut remains deferred.
 
-UI refinement: remove the top Add bookmark / Import YAML action row so the page begins with bookmark categories and links. Both actions are available in Options; category context menus retain Add bookmark here.
+UI refinement: remove the full-size Add bookmark / Import YAML action row so the page begins with bookmark categories and links. Add muted icon-only shortcuts beside the top-right Options icon, with tooltips, native keyboard activation, hover/focus feedback, and no layout space reserved. Both full-size actions remain available in Options; category context menus retain Add bookmark here.
 
 ## 1. Goal and agreed scope
 

@@ -1257,7 +1257,7 @@ function getStyle(key, value) {
 				scale(value, 5, 20) + '%' :
 				scale(value, 80, 600) + 'px') + '; }';
 		case 'hide_options':
-			return '#options_button { opacity: 0; }';
+			return '#page_shortcuts .shortcut-button { opacity: 0; }';
 		case 'css':
 			return value;
 		case 'auto_scale':

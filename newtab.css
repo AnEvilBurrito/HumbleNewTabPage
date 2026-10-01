@@ -119,7 +119,7 @@ body {
 .hide-focus :focus {
 	outline: none;
 }
-#options, #options_button {
+#options {
 	position: absolute;
 	top: 0;
 	right: 0;
@@ -333,6 +333,37 @@ button {
 }
 button:hover { color: var(--page-accent); background: var(--page-highlight); }
 button:disabled { opacity: .4; cursor: default; }
+/* Floating shortcuts do not reserve space or alter the bookmark top margin. */
+#page_shortcuts {
+	position: fixed;
+	top: 0;
+	right: 0;
+	z-index: 2;
+	display: flex;
+	gap: 2px;
+}
+.shortcut-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 32px;
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	box-shadow: none;
+	font-size: 18px;
+	line-height: 1;
+	opacity: .5;
+	transition: opacity .15s ease, color .15s ease;
+}
+#page_shortcuts .shortcut-button:hover,
+#page_shortcuts .shortcut-button:focus-visible {
+	background-color: transparent;
+	color: var(--page-accent);
+	opacity: 1;
+}
 :focus-visible { outline: 2px solid var(--page-accent); outline-offset: 2px; }
 #page_status { margin: 2rem auto; width: 80%; font-size: 1.5em; line-height: 1.6; }
 .empty-state { white-space: normal; line-height: 1.7; font-size: 1.4em; padding: 1rem; }

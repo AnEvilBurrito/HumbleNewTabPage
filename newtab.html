@@ -12,7 +12,11 @@
 <p id="page_status" role="alert" hidden></p>
 <div id="main">
 </div>
-<a id="options_button" title="Options" aria-label="Options" role="button" tabindex="0"></a>
+<div id="page_shortcuts" role="group" aria-label="Page shortcuts">
+	<button id="quick_add_bookmark" class="shortcut-button" type="button" title="Add bookmark" aria-label="Add bookmark"><span class="mdi-icon" data-mdi-icon="plus" aria-hidden="true"></span></button>
+	<button id="quick_import_bookmarks" class="shortcut-button" type="button" title="Import YAML" aria-label="Import YAML"><span class="mdi-icon" data-mdi-icon="file-import-outline" aria-hidden="true"></span></button>
+	<button id="options_button" class="shortcut-button" type="button" title="Options" aria-label="Options"></button>
+</div>
 <div id="options">
 	<a id="options_close_button" title="Close" tabindex="0">&times;</a>
 	<ul id="options_nav">
@@ -33,7 +37,7 @@
 		<label><span>Remember open folders</span><input id="options_remember_open" type="checkbox"/></label>
 		<label><span>Auto-close folders</span><input id="options_auto_close" type="checkbox"/></label>
 		<label><span>Show top-level folders</span><input id="options_show_root" type="checkbox"/></label>
-		<label><span>Hide options button</span><input id="options_hide_options" type="checkbox"/></label>
+		<label><span>Hide shortcut icons</span><input id="options_hide_options" type="checkbox"/></label>
 	</fieldset>
 	<fieldset>
 		<legend>Content</legend>
