@@ -1,5 +1,36 @@
 'use strict';
 
+var bookmarkStore = new CustomBookmarks.BookmarksStore(localStorage);
+var bookmarks;
+var bookmarkError = '';
+function loadBookmarkData() {
+	try {
+		bookmarks = bookmarkStore.load();
+		bookmarkError = '';
+	} catch (error) {
+		bookmarks = CustomBookmarks.parse(CustomBookmarks.EMPTY_YAML);
+		bookmarkError = error.message;
+	}
+	var status = document.getElementById('page_status');
+	status.textContent = bookmarkError ? 'Unable to load saved bookmarks: ' + bookmarkError : '';
+	status.hidden = !bookmarkError;
+	for (var key in config) {
+		if (key.indexOf('show_custom.category.') === 0) delete config[key];
+	}
+	bookmarks.categories.forEach(function(node) { config['show_' + node.id] = 1; });
+	// Remove state for deleted categories, without touching legacy browser layout.
+	if (!bookmarkError) for (var key of Object.keys(localStorage)) {
+		var prefix = key.indexOf(CustomBookmarks.OPEN_PREFIX + 'custom.') === 0 ? CustomBookmarks.OPEN_PREFIX :
+			key.indexOf('options.show_custom.category.') === 0 ? 'options.show_' : null;
+		if (prefix && !bookmarks.nodes.has(key.substring(prefix.length))) localStorage.removeItem(key);
+	}
+}
+
+function folderInitiallyOpen(node) {
+	var saved = getConfig('remember_open') ? localStorage.getItem(CustomBookmarks.OPEN_PREFIX + node.id) : null;
+	return saved === null ? Boolean(node.pinned) : saved === '1';
+}
+
 // render a single bookmark node
 function render(node, target) {
 	if (node.description == 'separator') return;
@@ -55,12 +86,24 @@ function render(node, target) {
 	} else if (!node.children)
 		a.style.pointerEvents = 'none';
 
+	if (node.custom && !node.children) {
+		a.oncontextmenu = function(event) {
+			event.stopPropagation();
+			renderMenu([
+				{ label: 'Edit bookmark', action: function() { showBookmarkForm(node); } },
+				{ label: 'Delete bookmark', action: function() { deleteBookmark(node); } }
+			], event.pageX, event.pageY);
+			return false;
+		};
+	}
 	li.appendChild(a);
 
 	// folder
 	if (node.children) {
 		// render children
-		if (a.open || getConfig('remember_open') && localStorage.getItem('open.' + node.id)) {
+		a.setAttribute('aria-expanded', 'false');
+		if (folderInitiallyOpen(node)) {
+			a.setAttribute('aria-expanded', 'true');
 			setClass(a, node, true);
 			a.open = true;
 			getChildrenFunction(node)(function(result) {
@@ -69,6 +112,9 @@ function render(node, target) {
 		}
 
 		// click handlers
+		a.onkeydown = function(event) {
+			if (event.key === ' ') { event.preventDefault(); a.click(); }
+		};
 		addFolderHandlers(node, a);
 		enableDragFolder(node, a);
 
@@ -105,7 +151,7 @@ function renderAll(nodes, target, toplevel) {
 // render column with given index
 function renderColumn(index, target) {
 	var ids = columns[index];
-	if (ids.length == 1 && !getConfig('show_root'))
+	if (ids.length == 1 && !getConfig('show_root') && ids[0] !== 'apps')
 		getChildrenFunction({id: ids[0]})(function(result) {
 			renderAll(result, target);
 			addColumnHandlers(index, target);
@@ -136,6 +182,20 @@ function renderColumns() {
 	var target = document.getElementById('main');
 	while (target.hasChildNodes())
 		target.removeChild(target.lastChild);
+
+	if (bookmarks.categories.length === 0 && columns.length === 0) {
+		var empty = document.createElement('div');
+		empty.className = 'empty-state';
+		var heading = document.createElement('h1');
+		heading.textContent = bookmarkError ? 'Your saved list needs attention' : 'Your bookmarks, your start page';
+		var hint = document.createElement('p');
+		hint.textContent = 'Import a Flame YAML list or add your first bookmark. Browser bookmarks stay untouched.';
+		var button = document.createElement('button');
+		button.textContent = 'Import bookmarks';
+		button.onclick = function() { openBookmarkOptions(); };
+		empty.append(heading, hint, button);
+		target.appendChild(empty);
+	}
 
 	// render columns
 	for (var i = 0; i < columns.length; i++) {
@@ -302,12 +362,10 @@ function getMenuItems(node) {
 				openLink({ url: 'chrome://history' }, 1);
 			}
 		});
-	if (Number(node.id))
+	if (bookmarks.nodes.has(node.id))
 		items.push({
-			label: 'Edit bookmarks',
-			action: function() {
-				openLink({ url: 'chrome://bookmarks/?id=' + node.id }, 1);
-			}
+			label: 'Add bookmark here',
+			action: function() { showBookmarkForm(null, node.id); }
 		});
 	return items;
 }
@@ -372,7 +430,7 @@ function renderMenu(items, x, y) {
 
 // removes the given popup menu
 function closeMenu(ul) {
-	document.body.removeChild(ul);
+	if (ul.parentNode) ul.parentNode.removeChild(ul);
 	document.onclick = null;
 	document.onmousedown = null;
 	document.oncontextmenu = null;
@@ -589,12 +647,6 @@ function getChildrenFunction(node) {
 				else
 					callback([]);
 			};
-		case 'recent':
-			return function(callback) {
-				chrome.bookmarks.getRecent(getConfig('number_recent'), function(result) {
-					callback(result);
-				});
-			};
 		case 'closed':
 			return function(callback) {
 				getClosed(function(result) {
@@ -608,22 +660,10 @@ function getChildrenFunction(node) {
 				});
 			};
 		default:
-			if (node.children)
-				return function(callback) {
-					callback(node.children);
-				};
-			else
-				return function(callback) {
-					chrome.bookmarks.getSubTree(node.id, function(result) {
-						if (result)
-							callback(result[0].children);
-						else {
-							// remove missing bookmark locations
-							if (coords[node.id])
-								removeRow(coords[node.id].x, coords[node.id].y);
-						}
-					});
-				};
+			return function(callback) {
+				var stored = bookmarks.nodes.get(node.id);
+				callback(stored ? stored.children || [] : Array.isArray(node.children) ? node.children : []);
+			};
 	}
 }
 
@@ -636,9 +676,6 @@ function getSubTree(id, callback) {
 		case 'apps':
 			callback([{ title: 'Apps', id: 'apps', url: 'chrome://apps' }]);
 			break;
-		case 'recent':
-			callback([{ title: 'Recent bookmarks', id: 'recent', children: true }]);
-			break;
 		case 'closed':
 			callback([{ title: 'Recently closed', id: 'closed', children: true }]);
 			break;
@@ -646,15 +683,8 @@ function getSubTree(id, callback) {
 			callback([{ title: 'Other devices', id: 'devices', children: true }]);
 			break;
 		default:
-			chrome.bookmarks.getSubTree(id, function(result) {
-				if (result)
-					callback(result);
-				else {
-					// remove missing bookmark locations
-					if (coords[id])
-						removeRow(coords[id].x, coords[id].y);
-				}
-			});
+			var node = bookmarks.nodes.get(id);
+			callback(node ? [node] : []);
 	}
 }
 
@@ -662,8 +692,11 @@ function getSubTree(id, callback) {
 function setClass(target, node, isopen) {
 	if (node.className)
 		target.classList.add(node.className);
-	if (node.children)
+	if (node.custom && node.children) target.classList.add('category');
+	if (node.children) {
 		target.classList.add('folder');
+		target.setAttribute('role', 'button');
+	}
 	if (isopen)
 		target.classList.add('open');
 	else
@@ -672,7 +705,6 @@ function setClass(target, node, isopen) {
 	switch(node.id) {
 		case 'top':
 		case 'apps':
-		case 'recent':
 		case 'closed':
 		case 'devices':
 		case 'empty':
@@ -682,6 +714,13 @@ function setClass(target, node, isopen) {
 
 // gets best icon for a node
 function getIcon(node) {
+	if (node.custom) {
+		var mdi = document.createElement('span');
+		mdi.className = 'icon mdi-icon';
+		mdi.setAttribute('aria-hidden', 'true');
+		mdi.textContent = CustomBookmarks.glyph(node.children ? 'folder-outline' : node.mdiIcon);
+		return mdi;
+	}
 	var url = null,
 		url2x = null;
 	if (node.icons) {
@@ -714,9 +753,10 @@ function toggle(node, a) {
 	var isopen = a.open;
 	setClass(a, node, !isopen);
 	a.open = !isopen;
+	a.setAttribute('aria-expanded', String(a.open));
 	if (isopen) {
-		// close folder
-		localStorage.removeItem('open.' + node.id);
+		// An explicit closed state overrides pinned defaults.
+		localStorage.setItem(CustomBookmarks.OPEN_PREFIX + node.id, '0');
 		if (a.nextSibling){
 			// auto-close child folders
 			if (getConfig('auto_close')) {
@@ -732,7 +772,7 @@ function toggle(node, a) {
 		}
 	} else {
 		// open folder
-		localStorage.setItem('open.' + node.id, true);
+		localStorage.setItem(CustomBookmarks.OPEN_PREFIX + node.id, '1');
 		// auto-close sibling folders
 		if (getConfig('auto_close')) {
 			var siblings = a.parentNode.parentNode.children;
@@ -820,101 +860,33 @@ function openLink(node, newtab) {
 var columns; // columns[x][y] = id
 var root; // root[] = id
 var coords; // coords[id] = {x:x, y:y}
-var special = ['apps', 'top', 'recent', 'closed', 'devices'];
+var special = ['apps', 'top', 'closed', 'devices'];
 
-// ensure root folders are included
+// Reconcile only independent custom categories and optional non-bookmark sections.
 function verifyColumns() {
-	// default layout
-	if (columns.length === 0) {
-		columns.push([]);
-		columns.push(special.filter(function(a) {
-			return getConfig('show_' + a) != false;
-		}));
-	}
-
-	// find missing root items
-	var missing = root.slice(0);
-	for (var x = 0; x < columns.length; x++) {
-		for (var y = 0; y < columns[x].length; y++) {
-			var i = missing.indexOf(columns[x][y]);
-			if (i > -1)
-				missing.splice(i, 1);
-		}
-	}
-
-	// add missing root items
-	var column = columns[0];
-	for (var i = 0; i < missing.length; i++) {
-		if (getConfig('show_' + missing[i]) != false)
-			column.push(missing[i]);
-	}
-
-	// populate coordinate map
-	coords = {};
-	for (var x = 0; x < columns.length; x++) {
-		for (var y = 0; y < columns[x].length; y++) {
-			coords[columns[x][y]] = { x: x, y: y};
-		}
-		if (columns[x].length === 0) {
-			columns.splice(x, 1);
-			x--;
-		}
-	}
+	root = bookmarks.categories.map(function(node) { return node.id; }).concat(special);
+	columns = CustomBookmarks.reconcileColumns(columns, root, function(id) {
+		return getConfig('show_' + id) != false;
+	});
+	coords = Object.create(null);
+	columns.forEach(function(row, x) {
+		row.forEach(function(id, y) { coords[id] = { x: x, y: y }; });
+	});
 }
 
-// load columns from storage or default
 function loadColumns() {
-	columns = [];
-	for (var x = 0; ; x++) {
-		var row = [];
-		for (var y = 0; ; y++) {
-			var id = localStorage.getItem('column.' + x + '.' + y);
-			if (id) row.push(id); else break;
-		}
-		if (row.length > 0) columns.push(row); else break;
-	}
-
-	if (root) {
-		verifyColumns();
-		renderColumns();
-	} else {
-		chrome.bookmarks.getTree(function(result) {
-			// init root nodes
-			var nodes = result[0].children;
-			root = special.slice(0);
-
-			for (var i = 0; i < nodes.length; i++)
-				root.push(nodes[i].id);
-
-			verifyColumns();
-			renderColumns();
-		});
-	}
+	try {
+		columns = JSON.parse(localStorage.getItem(CustomBookmarks.LAYOUT_KEY) || '[]');
+	} catch (error) { columns = []; }
+	verifyColumns();
+	renderColumns();
 }
 
-// saves current column configuration to storage
 function saveColumns() {
-	// clear previous config
-	for (var x = 0; ; x++) {
-		for (var y = 0; ; y++) {
-			var id = localStorage.getItem('column.' + x + '.' + y);
-			if (id)
-				localStorage.removeItem('column.' + x + '.' + y);
-			else
-				break;
-		}
-		if (y === 0)
-			break;
-	}
 	verifyColumns();
-	// save new config
-	for (var x = 0; x < columns.length; x++) {
-		for (var y = 0; y < columns[x].length; y++) {
-			localStorage.setItem('column.' + x +'.' + y, columns[x][y]);
-		}
-	}
-	// refresh
-	loadColumns();
+	try { localStorage.setItem(CustomBookmarks.LAYOUT_KEY, JSON.stringify(columns)); }
+	catch (error) { alert('Unable to save column layout: ' + error.message); }
+	renderColumns();
 }
 
 // creates and saves a new column
@@ -964,7 +936,8 @@ function addRow(id, xpos, ypos) {
 				xpos--;
 		}
 	}
-	// insert new id
+	// A single-category column may disappear while its row is being moved.
+	if (!columns[xpos]) columns[xpos] = [];
 	columns[xpos].splice(Math.min(ypos, columns[xpos].length), 0, id);
 
 	// save
@@ -1044,6 +1017,7 @@ function refreshClosed() {
 	}
 	if (folders.length === 0 && coords['closed']) {
 		var target = document.getElementsByClassName('column')[coords['closed'].x];
+		if (!target || !target.firstChild) return;
 		target.removeChild(target.firstChild);
 		targets.push(target);
 	}
@@ -1059,7 +1033,7 @@ var config = {
 	font: 'Sans-serif',
 	font_size: 16,
 	font_weight: 400,
-	theme: 'Default',
+	theme: 'Flame',
 	font_color: '#555555',
 	background_color: '#ffffff',
 	highlight_color: '#e4f4ff',
@@ -1080,25 +1054,31 @@ var config = {
 	slide: 1,
 	hide_options: 0,
 	lock: 0,
-	show_top: 1,
-	show_apps: 1,
-	show_recent: 1,
-	show_closed: 1,
-	show_devices: 1,
-	show_root: 0,
+	show_top: 0,
+	show_apps: 0,
+	show_closed: 0,
+	show_devices: 0,
+	show_root: 1,
 	newtab: 0,
 	remember_open: 1,
 	auto_close: 0,
 	auto_scale: 1,
 	css: '',
 	number_top: 10,
-	number_closed: 10,
-	number_recent: 10
+	number_closed: 10
 };
 
 // color theme values
 var themes = {
 	Default: {},
+	Flame: {
+		font_color: '#c7cbd1',
+		background_color: '#1e2126',
+		highlight_color: '#2b3038',
+		highlight_font_color: '#a9c7ff',
+		shadow_color: '#1e2126',
+		shadow_blur: 0
+	},
 	Classic: {
 		font_color: '#000000',
 		background_color: '#ffffff',
@@ -1197,16 +1177,17 @@ function setConfig(key, value) {
 		value = (theme.hasOwnProperty(key) ? theme[key] : config[key]);
 	}
 	// special case settings
-	if (key == 'lock' || key == 'newtab' || key == 'show_root' || key.substring(0,6) == 'number')
+	if (key == 'lock' || key == 'newtab' || key == 'show_root' || key == 'remember_open' || key.substring(0,6) == 'number')
 		loadColumns();
 	else if (key == 'theme') {
-		theme = themes[value];
+		theme = themes[value] || {};
 		for (var i in config) {
 			if (i != key) {
 				onChange(i);
 				showConfig(i);
 			}
 		}
+		document.body.dataset.theme = value;
 	} else if (key.substring(0,4) == 'show') {
 		var id = key.substring(5);
 		if (!value) {
@@ -1233,9 +1214,9 @@ function getStyle(key, value) {
 		case 'font_weight':
 			return '#main a { font-weight: ' + value + '; }';
 		case 'font_color':
-			return '#main a { color: ' + value + '; }';
+			return 'body { --page-text: ' + value + '; } #main a { color: ' + value + '; }';
 		case 'background_color':
-			return 'body { background-color: ' + value + '; }';
+			return 'body { background-color: ' + value + '; --page-background: ' + value + '; }';
 		case 'background_image':
 			return 'body { background-image: url(' + value + '); }';
 		case 'background_image_file':
@@ -1247,9 +1228,9 @@ function getStyle(key, value) {
 		case 'background_size':
 			return 'body { background-size: ' + value + '; }';
 		case 'highlight_font_color':
-			return '#main a:hover { color: ' + value + '; }';
+			return 'body { --page-accent: ' + value + '; } #main a:hover { color: ' + value + '; }';
 		case 'highlight_color':
-			return '#main a:hover { background-color: ' + value + '; }';
+			return 'body { --page-highlight: ' + value + '; } #main a:hover { background-color: ' + value + '; }';
 		case 'shadow_color':
 			return '#main a:hover { box-shadow: 0 0 ' + scale(getConfig('shadow_blur'), 7, 100) + 'px ' + value + '; }';
 		case 'shadow_blur':
@@ -1339,13 +1320,16 @@ function onChange(key, value) {
 		onChange('v_margin');
 	}
 
+	// Keep user-authored CSS last, even after changing individual appearance controls.
+	if (key !== 'css' && styles.css) document.head.appendChild(styles.css);
+
 	// update options panel
 	if (!settingsInitialized)
 		return;
 
 	// show/hide default button
 	var input = document.getElementById('options_' + key);
-	if (input) {
+	if (input && input.reset) {
 		var isDefault = value == (theme.hasOwnProperty(key) ? theme[key] : config[key]);
 		input.reset.style.visibility = (isDefault ? 'hidden' : null);
 		if (input.swatch)
@@ -1357,6 +1341,7 @@ function onChange(key, value) {
 function loadSettings() {
 	// load theme
 	theme = themes[getConfig('theme')] || {};
+	document.body.dataset.theme = getConfig('theme');
 	// load settings
 	for (var key in config)
 		if (key === 'background_image_file')
@@ -1479,19 +1464,22 @@ function initSettings() {
 				imports.value = '';
 				imports.placeholder = 'Paste exported settings here';
 				imports.onchange = function() {
+					imports.setCustomValidity('');
 					try {
-						var imported = JSON.parse(imports.value);
-						for(var key in imported) {
-							localStorage.setItem(key, imported[key]);
-						}
+						if (bookmarkEditorDirty() && !confirm('Discard unsaved YAML edits and restore this backup?')) return;
+						CustomBookmarks.restoreSettings(localStorage, imports.value);
+						loadBookmarkData();
+						refreshBookmarkControls();
+						reloadBookmarkEditor();
 						imports.value = '';
 						imports.placeholder = 'Import successful!';
 						exports.value = JSON.stringify(localStorage, replacer);
 						loadSettings();
 						loadColumns();
+						for (var key in config) showConfig(key);
 					} catch (e) {
-						imports.value = '';
-						imports.placeholder = 'Import error! Please check if your settings are valid JSON.';
+						imports.setCustomValidity('Import error: ' + e.message);
+						imports.reportValidity();
 					}
 				};
 			}
@@ -1499,72 +1487,49 @@ function initSettings() {
 		};
 	}
 
-	// add options to hide bookmark folders
-	chrome.bookmarks.getTree(function(result) {
-		var placeholder = document.getElementById('options_show_bookmarks');
-		var nodes = result[0].children;
-		for (var i = 0; i < nodes.length; i++) {
-			var key = 'show_' + nodes[i].id;
-			config[key] = 1;
+	// Settings initialization is independent of browser-owned bookmark APIs.
+	refreshBookmarkControls();
 
-			var span = document.createElement('span');
-			span.innerText = nodes[i].title;
+	// replace text input with system font list
+	if (chrome.fontSettings) {
+		var input = document.getElementById('options_font');
+		var select = document.createElement('select');
+		input.parentNode.replaceChild(select, input);
+		select.id = input.id;
+	}
 
-			var input = document.createElement('input');
-			input.type = 'checkbox';
-			input.id = 'options_' + key;
+	// Dynamic category controls are initialized by refreshBookmarkControls.
+	for (var key in config)
+		if (key.indexOf('show_custom.category.') !== 0) initConfig(key);
 
-			var label = document.createElement('label');
-			label.appendChild(span);
-			label.appendChild(input);
-			placeholder.appendChild(label);
+	loadSettings();
+
+	// load themes
+	var select = document.getElementById('options_theme');
+	if (select.childNodes.length === 0) {
+		for (var i in themes) {
+			var option = document.createElement('option');
+			option.innerText = i;
+			if (i == getConfig('theme')) option.selected = 'selected';
+			select.appendChild(option);
 		}
+	}
 
-		// replace text input with system font list
-		if (chrome.fontSettings) {
-			var input = document.getElementById('options_font');
-			var select = document.createElement('select');
-			input.parentNode.replaceChild(select, input);
-			select.id = input.id;
-		}
-
-		// show settings
-		for (var key in config)
-			initConfig(key);
-
-		loadSettings();
-
-		// load themes
-		var select = document.getElementById('options_theme');
-		if (select.childNodes.length === 0) {
-			for (var i in themes) {
+	// load font list
+	if (chrome.fontSettings) {
+		chrome.fontSettings.getFontList(function(fonts) {
+			var select = document.getElementById('options_font');
+			if (select.childNodes.length > 0) return;
+			fonts.unshift({ fontId: 'Sans-serif' });
+			for (var i = 0; i < fonts.length; i++) {
+				var font = fonts[i].fontId;
 				var option = document.createElement('option');
-				option.innerText = i;
-				if (i == getConfig('theme'))
-					option.selected = 'selected';
+				option.innerText = font;
+				if (font == getConfig('font')) option.selected = 'selected';
 				select.appendChild(option);
 			}
-		}
-
-		// load font list
-		if (chrome.fontSettings) {
-			chrome.fontSettings.getFontList(function(fonts) {
-				var select = document.getElementById('options_font');
-				if (select.childNodes.length > 0)
-					return;
-
-				fonts.unshift({ fontId: 'Sans-serif' });
-				for (var i = 0; i < fonts.length; i++) {
-					var font = fonts[i].fontId;
-					var option = document.createElement('option');
-					option.innerText = font;
-					if (font == getConfig('font'))
-						option.selected = 'selected';
-					select.appendChild(option);
-				}
-			});
-		}
-	});
+		});
+	}
 }
 
 // show options panel
@@ -1578,7 +1543,16 @@ function showOptions(show) {
 	}
 }
 
+// One-time migration: later fresh-install preference changes must not switch Flame to Default.
+if (localStorage.getItem('customMigration.v1') === null) {
+	if (localStorage.getItem('options.theme') === null && Object.keys(localStorage).some(function(key) {
+		return key.indexOf('column.') === 0 || key.indexOf('options.') === 0;
+	})) localStorage.setItem('options.theme', 'Default');
+	localStorage.setItem('customMigration.v1', '1');
+}
+
 // initialize page
+loadBookmarkData();
 loadSettings();
 loadColumns();
 
@@ -1605,8 +1579,7 @@ document.getElementById('options_button').onclick = function() {
 	showOptions(true);
 	return false;
 };
-if (location.search === '?options')
-	showOptions(true);
+// The bookmark UI opens ?options after all scripts are initialized.
 
 // refresh recently closed
 if (chrome.sessions)

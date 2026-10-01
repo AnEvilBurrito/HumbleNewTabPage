@@ -1,0 +1,22 @@
+# Sanitized Flame-compatible example. Import explicitly through Import YAML.
+categories:
+  - name: Work
+    pinned: true
+    bookmarks:
+      - name: Mail
+        url: https://mail.example.com/#inbox
+        icon: gmail
+      - name: Code
+        url: https://code.example.com/
+        icon: github
+  - name: Reading
+    pinned: true
+    bookmarks:
+      - name: News
+        url: https://news.example.com/
+        icon: newspaper
+  - name: Local
+    bookmarks:
+      - name: Home Assistant
+        url: http://homeassistant.local:8123/
+        icon: home-assistant

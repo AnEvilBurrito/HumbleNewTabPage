@@ -280,9 +280,6 @@ input[type="file"]::-webkit-file-upload-button {
 }
 /* The following icons are copyright (c) 2012 The Chromium Authors.
    see LICENSE_chromium_BSD.txt */
-.recent .icon {
-	background-image: -webkit-image-set(url("icons/recent.png") 1x, url("icons/recent@2x.png") 2x);
-}
 .top .icon {
 	background-image: -webkit-image-set(url("icons/top.png") 1x, url("icons/top@2x.png") 2x);
 }
@@ -300,4 +297,97 @@ input[type="file"]::-webkit-file-upload-button {
 }
 #options_button {
 	background-image: -webkit-image-set(url("icons/options.png") 1x, url("icons/options@2x.png") 2x);
+}
+
+/* Flame-inspired shell; generated appearance styles and Custom CSS remain authoritative. */
+body {
+	--page-text: #555555;
+	--page-background: #ffffff;
+	--page-highlight: #e4f4ff;
+	--page-accent: #000000;
+	--panel-background: #fafafa;
+	--panel-border: #cccccc;
+	--field-background: #ffffff;
+	--muted-text: #666666;
+	color: var(--page-text);
+}
+body[data-theme="Flame"] {
+	--panel-background: #252930;
+	--panel-border: #424954;
+	--field-background: #1e2126;
+	--muted-text: #abb2bd;
+	color-scheme: dark;
+}
+#main { overflow-x: auto; padding-bottom: 2rem; }
+#main .column { min-width: 180px; }
+#main .category { font-weight: 600; letter-spacing: .04em; margin: .4em 0; }
+#main .mdi-icon { background-image: none; font-size: 1.15em; width: 1em; height: 1em; }
+button {
+	font: inherit;
+	color: var(--page-text);
+	background: var(--panel-background);
+	border: 1px solid var(--panel-border);
+	border-radius: .35em;
+	padding: .6em 1em;
+	cursor: pointer;
+}
+button:hover { color: var(--page-accent); background: var(--page-highlight); }
+button:disabled { opacity: .4; cursor: default; }
+:focus-visible { outline: 2px solid var(--page-accent); outline-offset: 2px; }
+#page_status { margin: 2rem auto; width: 80%; font-size: 1.5em; line-height: 1.6; }
+.empty-state { white-space: normal; line-height: 1.7; font-size: 1.4em; padding: 1rem; }
+.empty-state h1 { font-weight: 500; font-size: 1.8em; }
+.empty-state p { color: var(--muted-text); }
+#options { position: fixed; z-index: 10; max-height: 100vh; overflow-y: auto; background: var(--panel-background); color: var(--page-text); }
+#options .section, #options_nav a.current { background: var(--panel-background); color: var(--page-text); }
+#options_nav { background: var(--field-background); border-color: var(--panel-border); }
+#options_nav a.current { border-color: var(--panel-border); }
+#options_nav a:hover { background: var(--page-highlight); outline-color: var(--page-accent); }
+#options_close_button { color: var(--page-text); z-index: 1; }
+#options input, #options select, #options textarea, #bookmark_dialog input, #bookmark_dialog select {
+	background: var(--field-background);
+	color: var(--page-text);
+	border: 1px solid var(--panel-border);
+	border-radius: .2em;
+	padding: .2em;
+}
+#options textarea { float: none; max-width: 100%; }
+#options fieldset { min-width: 0; }
+#options legend { color: var(--muted-text); }
+.bookmark-tools { max-width: 30em; padding-right: 1em; line-height: 1.6; }
+.bookmark-tools label { text-align: left; margin: .7em 0 .2em; }
+#bookmark_file, #bookmark_yaml { display: block; width: 100%; margin: 0; }
+#bookmark_yaml { height: 22em; resize: vertical; }
+.button-row { display: flex; gap: .5em; flex-wrap: wrap; margin-top: 1em; }
+#bookmark_status { white-space: pre-wrap; overflow-wrap: anywhere; }
+.error-message, #bookmark_form_status { color: #d76464; }
+#bookmark_dialog {
+	background: var(--panel-background);
+	color: var(--page-text);
+	border: 1px solid var(--panel-border);
+	border-radius: .6em;
+	padding: 1.5em;
+	width: min(28em, calc(100vw - 5em));
+	font-size: 1.5em;
+	line-height: 1.5;
+}
+#bookmark_dialog::backdrop { background: rgba(0, 0, 0, .6); }
+#bookmark_dialog h2 { margin: 0 0 1em; font-weight: 500; }
+#bookmark_dialog label { text-align: left; margin: .7em 0 .2em; font-size: 1em; }
+#bookmark_dialog input, #bookmark_dialog select { width: 100%; margin: 0; padding: .5em; }
+#bookmark_dialog [hidden] { display: none; }
+.icon-picker { display: flex; gap: .8em; align-items: center; }
+#bookmark_icon_preview { font-size: 1.8em; }
+.menu { background: var(--panel-background); border-color: var(--panel-border); z-index: 20; }
+.menu a { color: var(--page-text); }
+.menu a:hover { background: var(--page-highlight); border-color: var(--page-accent); }
+@media (max-width: 760px) {
+	#main { white-space: normal; }
+	#main .column { width: 100% !important; min-height: 0; }
+	#options { width: 100%; min-width: 0; }
+	#options_nav { position: static; width: 100%; display: flex; flex-wrap: wrap; }
+	#options_nav a { padding: .8em; }
+	#options .section { margin-left: 0; }
+	fieldset { margin-left: 1em; }
+	#options_close_button { position: static; margin-left: auto; }
 }

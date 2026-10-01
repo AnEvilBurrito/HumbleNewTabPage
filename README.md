@@ -1,25 +1,105 @@
-Humble New Tab Page
-===================
+Flame × Humble New Tab
+=====================
 
-Redesigned new tab page featuring your bookmarks, apps, most visited, and recently closed in a custom layout.
+A fork of Humble New Tab Page combining independent Flame-compatible YAML bookmarks, locally bundled Material Design Icons, and a Flame-inspired theme with Humble's draggable columns and collapsible folders.
 
-![](media/shot.1.png)
+**Browser bookmarks are never read or modified.** This fork does not require a Flame server.
 
 ### Features
 
-- Simple, clean design
-- Highly customizable
-- Fast loading and lightweight
+- Import a `.yaml` / `.yml` file or paste/edit YAML in Options.
+- Quickly add bookmarks and create categories using **Options → Settings → + Add bookmark**, or right-click a category and choose **Add bookmark here**.
+- Right-click a bookmark to **Edit** or **Delete** it.
+- Choose from 7,448 bundled MDI icons with searchable suggestions and a preview.
+- Export your complete custom list back to YAML, including quick-added bookmarks.
+- Drag categories/columns or use category context menus to create new columns.
+- Customize themes, fonts, spacing, link-opening behavior, and CSS.
+- Optional Apps, Most visited, Recently closed, and Other devices sections (off by default).
 
-[Download for Chrome](https://chrome.google.com/webstore/detail/mfgdmpfihlmdekaclngibpjhdebndhdj)
+### Install in Chrome / Chromium
 
-[Download for Firefox](https://addons.mozilla.org/firefox/addon/humble-new-tab/)
+1. Clone or download this fork. The checked-in `assets/` folder contains the runtime dependencies; no build is required to try it.
+2. Open `chrome://extensions`, enable **Developer mode**, and select **Load unpacked**.
+3. Select this repository folder, then open a new tab.
+4. Open **Options → Import/Export**, choose a YAML file, inspect the preview, and click **Apply list**.
 
-This extension replaces the default new tab page. Drag and drop folders to create new columns or reorder them. The font, colors, spacing, and more can be customized from the options menu.
+The Chrome/Firefox store versions of upstream Humble do not include this fork's features. This implementation is tested with Chromium Manifest V3; Firefox support has not been verified.
 
+### YAML format
 
-Screenshots
------------
+```yaml
+categories:
+  - name: Work
+    pinned: true
+    bookmarks:
+      - name: Mail
+        url: https://mail.example.com/#inbox
+        icon: gmail
+      - name: Code
+        url: https://code.example.com/
+        icon: mdi-github
+  - name: Reading
+    bookmarks: []
+```
+
+See [docs/example-bookmarks.yaml](docs/example-bookmarks.yaml) for a sanitized example.
+
+- Categories require `name` and `bookmarks`; bookmarks require `name` and `url`.
+- `icon` accepts a bare MDI name or the `mdi-` prefix. Missing/unknown icons use a local link icon; unknown names produce a warning.
+- `pinned` defaults to `false` and means **initially expanded**, not locked. Remember open folders preserves explicit open/closed choices.
+- Names must be unique within their category; category names must be unique. Names are case-sensitive and trimmed.
+- Supported URLs: `http://`, `https://`, `file:///`, and `chrome://`. Chrome file links may require **Allow access to file URLs** in the extension's details.
+- Limit: 1 MiB, 200 categories, 10,000 bookmarks. YAML aliases/custom tags and duplicate mapping keys are rejected. Unknown metadata fields are retained in YAML but ignored by rendering, with a warning.
+
+### Import, editing, and backup
+
+**Import replaces the entire custom list**, not just matching names. File selection and typing only change the editor; the saved list changes after Validate / Preview and Apply. Invalid input does not replace the previous list.
+
+Use **Export YAML** before replacing or clearing your list. Original comments are preserved on import/export; quick edits use the YAML syntax tree to retain surrounding comments and metadata, although formatting may change. Export Settings also backs up the custom YAML, layout, and appearance settings.
+
+Apply or reload unsaved YAML edits before using quick-add/Edit/Delete. Other open new-tab pages refresh automatically, and stale forms are rejected rather than overwriting newer changes.
+
+Bookmarks remain local to this browser profile. The extension does not watch the imported file, update that file, synchronize with Flame, or load the repository's personal `flame.yaml` automatically. Extension removal clears its local storage, so keep exports if you need a durable backup.
+
+The main page shows only bookmark categories and links, without an action toolbar. Add/import controls are available through Options (the top-right icon).
+
+Fresh installs use the Flame theme and show category headings. Existing explicit appearance/link-opening preferences are preserved; old browser bookmark layouts are not reused. For a multi-column layout, right-click a category and choose **Create new column**, or drag categories to column edges.
+
+### Development and testing
+
+Requires Node.js 24 or newer for the current development dependencies.
+
+```sh
+npm ci
+npm run build
+npm test
+```
+
+`build` regenerates runtime assets from pinned `yaml` and `@mdi/font` dependencies. Commit regenerated `assets/` together with source changes. There are no runtime CDN dependencies or framework requirements.
+
+For a real unpacked-extension smoke test, first install Playwright Chromium inside the workspace:
+
+```sh
+# Git Bash / Unix shells
+PLAYWRIGHT_BROWSERS_PATH=.tmp/browsers npx playwright install chromium
+npm run test:browser
+```
+
+```powershell
+# PowerShell
+$env:PLAYWRIGHT_BROWSERS_PATH = "$PWD/.tmp/browsers"
+npx playwright install chromium
+npm run test:browser
+```
+
+Test profiles, browser binaries, downloads, and screenshots stay in `.tmp/`, which is ignored. See [docs/implementation-plan.md](docs/implementation-plan.md) and [docs/verification.md](docs/verification.md).
+
+### Licenses
+
+The fork retains Humble's MIT license. Bundled YAML uses the ISC license; MDI uses the Pictogrammers Free License (font/icons Apache 2.0, code MIT). License notices are included under `assets/`.
+
+Upstream screenshots (before this fork)
+--------------------------------------
 ![](media/shot.2.png)
 ![](media/shot.3.png)
 ![](media/shot.4.png)

@@ -2,14 +2,17 @@
 <html>
 <head>
 <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>New Tab</title>
 <link rel="stylesheet" href="newtab.css">
+<link rel="stylesheet" href="assets/mdi.css">
 <link rel="icon" href="icons/icon_16.png">
 </head>
 <body>
+<p id="page_status" role="alert" hidden></p>
 <div id="main">
 </div>
-<a id="options_button" title="Options" tabindex="0"></a>
+<a id="options_button" title="Options" aria-label="Options" role="button" tabindex="0"></a>
 <div id="options">
 	<a id="options_close_button" title="Close" tabindex="0">&times;</a>
 	<ul id="options_nav">
@@ -34,12 +37,14 @@
 	</fieldset>
 	<fieldset>
 		<legend>Content</legend>
+		<div class="button-row">
+			<button id="add_bookmark" type="button">+ Add bookmark</button>
+			<button id="import_bookmarks" type="button">Import YAML</button>
+		</div>
 		<label><span>Apps</span><input id="options_show_apps" type="checkbox"/></label>
-		<div id="options_show_bookmarks"></div>
+		<div id="options_show_categories"></div>
 		<label><span>Most visited</span><input id="options_show_top" type="checkbox"/></label>
 		<label class="subopt"><span>Number of items</span><input id="options_number_top" type="number" min="1" max="10"/></label>
-		<label><span>Recent bookmarks</span><input id="options_show_recent" type="checkbox"/></label>
-		<label class="subopt"><span>Number of items</span><input id="options_number_recent" type="number" min="1" max="1000"/></label>
 		<label><span>Recently closed</span><input id="options_show_closed" type="checkbox"/></label>
 		<label class="subopt"><span>Number of items</span><input id="options_number_closed" type="number" min="1" max="25"/></label>
 		<label><span>Other devices</span><input id="options_show_devices" type="checkbox"/></label>
@@ -117,6 +122,24 @@
 	</fieldset>
 	</div><div class="section">
 	<fieldset>
+		<legend>Custom bookmarks</legend>
+		<div class="bookmark-tools">
+			<p>Import replaces your custom list. Export a backup first. Files are not watched after import.</p>
+			<label for="bookmark_file">Load YAML file</label>
+			<input id="bookmark_file" type="file" accept=".yaml,.yml,text/yaml,application/yaml" />
+			<label for="bookmark_yaml">Flame YAML</label>
+			<textarea id="bookmark_yaml" spellcheck="false" aria-describedby="bookmark_status"></textarea>
+			<div class="button-row">
+				<button id="bookmark_validate" type="button">Validate / Preview</button>
+				<button id="bookmark_apply" type="button" disabled>Apply list</button>
+				<button id="bookmark_reload" type="button">Reload saved</button>
+				<button id="bookmark_export" type="button">Export YAML</button>
+				<button id="bookmark_clear" type="button">Clear list</button>
+			</div>
+			<p id="bookmark_status" role="status" aria-live="polite"></p>
+		</div>
+	</fieldset>
+	<fieldset>
 		<legend>Export Settings</legend>
 		<label><textarea id="options_export" readonly></textarea></label>
 	</fieldset>
@@ -135,6 +158,32 @@
 	</fieldset>
 	</div>
 </div>
+<dialog id="bookmark_dialog" aria-labelledby="bookmark_dialog_title">
+	<form id="bookmark_form">
+		<h2 id="bookmark_dialog_title">Add bookmark</h2>
+		<label for="bookmark_url">URL</label>
+		<input id="bookmark_url" type="text" required placeholder="https://example.com/" />
+		<label for="bookmark_name">Name</label>
+		<input id="bookmark_name" type="text" required maxlength="300" />
+		<label for="bookmark_category">Category</label>
+		<select id="bookmark_category"></select>
+		<label id="new_category_label" for="bookmark_new_category">New category name</label>
+		<input id="bookmark_new_category" type="text" maxlength="300" />
+		<label for="bookmark_icon">MDI icon (optional)</label>
+		<div class="icon-picker">
+			<input id="bookmark_icon" type="text" list="mdi_names" placeholder="link-variant" />
+			<span id="bookmark_icon_preview" class="mdi-icon" aria-hidden="true"></span>
+		</div>
+		<datalist id="mdi_names"></datalist>
+		<p id="bookmark_form_status" role="alert"></p>
+		<div class="button-row">
+			<button type="submit">Save bookmark</button>
+			<button id="bookmark_cancel" type="button">Cancel</button>
+		</div>
+	</form>
+</dialog>
+<script src="assets/custom-bookmarks.bundle.js"></script>
 <script src="newtab.js"></script>
+<script src="custom-bookmarks-ui.js"></script>
 </body>
 </html>
