@@ -735,9 +735,12 @@ function getIcon(node) {
 		}
 	} else if (node.icon) {
 		url = node.icon;
-	} else if (node.url) {
+	} else if (node.url && location.protocol !== 'moz-extension:') {
 		url = `/_favicon/?pageUrl=${encodeURIComponent(node.url)}&size=16`;
 		url2x = `/_favicon/?pageUrl=${encodeURIComponent(node.url)}&size=32`;
+	} else if (node.url) {
+		url = 'icons/page.png';
+		url2x = 'icons/page@2x.png';
 	}
 
 	var icon = document.createElement(url ? 'img' : 'div');
@@ -978,6 +981,10 @@ function getClosed(callback) {
 }
 
 function getDevices(callback) {
+	if (!chrome.sessions || !chrome.sessions.getDevices) {
+		callback([]);
+		return;
+	}
 	chrome.sessions.getDevices({ maxResults: getConfig('number_closed') }, function(devices) {
 		var nodes = [];
 		for (var i = 0; i < devices.length; i++) {
@@ -1489,6 +1496,12 @@ function initSettings() {
 
 	// Settings initialization is independent of browser-owned bookmark APIs.
 	refreshBookmarkControls();
+
+	if (!chrome.sessions || !chrome.sessions.getDevices) {
+		var devicesInput = document.getElementById('options_show_devices');
+		devicesInput.disabled = true;
+		devicesInput.parentNode.hidden = true;
+	}
 
 	// replace text input with system font list
 	if (chrome.fontSettings) {

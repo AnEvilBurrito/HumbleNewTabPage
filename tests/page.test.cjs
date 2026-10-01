@@ -6,9 +6,18 @@ const { JSDOM } = require('jsdom');
 const vm = require('node:vm');
 const M = require('../custom-bookmarks');
 const sample = '# Keep this comment\ncategories:\n  - name: Work\n    pinned: true\n    bookmarks:\n      - name: Mail\n        url: https://example.com/#inbox\n        icon: gmail\n  - name: Reading\n    bookmarks: []\n';
-function page(source, setup) {
-  const dom = new JSDOM(fs.readFileSync('newtab.html', 'utf8'), { url: 'https://extension.test/newtab.html', runScripts: 'outside-only', pretendToBeVisual: true });
+function page(source, setup, url = 'https://extension.test/newtab.html') {
+  const dom = new JSDOM(fs.readFileSync('newtab.html', 'utf8'), { url, runScripts: 'outside-only', pretendToBeVisual: true });
   const w = dom.window;
+  if (url.startsWith('moz-extension:')) {
+    const storage = new Map();
+    Object.defineProperty(w, 'localStorage', { value: {
+      getItem: key => storage.has(key) ? storage.get(key) : null,
+      setItem: (key, value) => storage.set(key, String(value)),
+      removeItem: key => storage.delete(key),
+      clear: () => storage.clear()
+    } });
+  }
   w.TextEncoder = TextEncoder;
   w.confirm = () => true;
   w.alerts = [];
@@ -28,6 +37,25 @@ function input(app, id, value) {
   app.get(id).dispatchEvent(new app.w.Event('input', {bubbles: true}));
 }
 function submit(app) { app.get('bookmark_form').dispatchEvent(new app.w.Event('submit', {cancelable: true})); }
+
+test('Firefox non-custom link icons use bundled page images', () => {
+  const app = page(sample, null, 'moz-extension://extension-test/newtab.html');
+  const icon = app.w.getIcon({ url: 'https://example.com' });
+  assert.equal(icon.getAttribute('src'), 'icons/page.png');
+  assert.equal(icon.getAttribute('srcset'), 'icons/page@2x.png 2x');
+  app.close();
+});
+
+test('unavailable devices API returns an empty list and hides its setting', () => {
+  const app = page(sample, window => { delete window.chrome.sessions.getDevices; });
+  let devices;
+  app.w.getDevices(result => { devices = result; });
+  assert.equal(devices.length, 0);
+  app.w.showOptions(true);
+  assert.equal(app.get('options_show_devices').disabled, true);
+  assert.equal(app.get('options_show_devices').parentNode.hidden, true);
+  app.close();
+});
 
 test('fresh page and options initialize without any browser bookmarks API', () => {
   const p = page();
